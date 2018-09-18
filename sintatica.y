@@ -46,6 +46,7 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 				E1.label = tempCastVarLabel;
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
+				$$->tipo = "float";
 				return builder + "\t" + E2.tipo + " " + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
 			}else
 			{
@@ -54,6 +55,7 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 				E2.label = tempCastVarLabel;
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
+				$$->tipo = "float";
 				return builder + "\t" + E1.tipo + " " + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
 			}
 		}
@@ -92,7 +94,7 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 %}
 %token TK_NUM
 %token TK_CHAR
-%token TK_MAIN TK_ID TK_TIPO_INT
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT
 %token TK_FIM TK_ERROR
 %token TK_CAST
 
@@ -123,6 +125,13 @@ COMANDOS	: COMANDO COMANDOS
 			|
 			;
 COMANDO 	: E ';'{ }
+/*			|
+			 TK_TIPO_INT TK_ID
+			{
+				string temp_dec = gerarNome();
+				$$.traducao = "\tint " + temp_dec + ";\n";				
+			}
+*/
 			;
 E 			: '(' E ')'
 			{

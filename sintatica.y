@@ -7,7 +7,6 @@
 #include <list>
 #define YYSTYPE atributos
 using namespace std;
-
 struct atributos
 {
 	string label;
@@ -16,17 +15,13 @@ struct atributos
 	string nome_var;
 };
 typedef struct atributos Atributos;
-
 typedef map<string, Atributos> MAPA;
 list<MAPA*> pilhaDeMapas;
 string variaveis;
-
 MAPA mapa_temp;
-
-
-
 int yylex(void);
 void yyerror(string);
+
 
 string gerarNome(){
 	static int numeroVariaveis = 0;
@@ -34,6 +29,17 @@ string gerarNome(){
 	ostringstream stringNumeroVariaveis;
 	stringNumeroVariaveis << numeroVariaveis;
 	return "temp_" + stringNumeroVariaveis.str();
+}
+
+MAPA* buscaMapa(string label)
+{
+	list<MAPA*>::iterator i;
+	for(i = pilhaDeMapas.begin(); i != pilhaDeMapas.end(); i++)
+	{
+		MAPA* mapa = *i;
+		if(mapa->find(label) != mapa->end()) {return mapa;}
+	}
+	return NULL;
 }
 
 string conversaoImplicita(atributos E1, atributos E2, string operador, atributos *$$)
@@ -48,16 +54,12 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 	{
 		yyerror("Error: Operação invalida.");
 	}
-
 	
-
 	if(operador == "+" || operador == "-" || operador == "*" || operador == "/")
 	{	
 		
-
 		if(E1.tipo == E2.tipo)
 		{
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				mapa_temp[$$->label].label = $$->label;
@@ -67,36 +69,27 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 		{
 			if(E1.tipo == "int")
 			{
-
-
 				string tempCastVarLabel = gerarNome();
 				string builder = "\t" + tempCastVarLabel + " = " + "(" + E2.tipo + ")" + E1.label + ";\n";
 				E1.label = tempCastVarLabel;
-
 				mapa_temp[tempCastVarLabel].label = E1.label;
 				mapa_temp[tempCastVarLabel].tipo = E2.tipo;
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				$$->tipo = "float";
-
 				mapa_temp[$$->label].label = $$->label;
 				mapa_temp[$$->label].tipo = $$->tipo;
 				return builder + "\t" + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
 			}else
 			{
-
 				string tempCastVarLabel = gerarNome();
 				string builder = "\t" + tempCastVarLabel + " = " + "(" + E1.tipo + ")" + E2.label + ";\n";
 				E2.label = tempCastVarLabel;
-
 				mapa_temp[tempCastVarLabel].label = E2.label;
 				mapa_temp[tempCastVarLabel].tipo = E1.tipo;
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				$$->tipo = "float";
-
 				mapa_temp[$$->label].label = $$->label;
 				mapa_temp[$$->label].tipo = $$->tipo;
 				return builder + "\t" + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
@@ -104,12 +97,9 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 		}
 	}else if(operador == "<" || operador == ">" || operador == ">=" || operador == "<=" || operador == "==" || operador == "!=" || operador == "&&" || operador == "||")
 	{
-
 		$$->tipo = "bool";
-
 		if(E1.tipo == E2.tipo)
 		{
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				mapa_temp[$$->label].label = $$->label;
@@ -118,39 +108,32 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 		}else if(E1.tipo != E2.tipo){
 			if(E1.tipo == "int" && E2.tipo != "bool")
 			{
-
 				string tempCastVarLabel = gerarNome();
 				string builder = "\t" + tempCastVarLabel + " = " + "(" + E2.tipo + ")" + E1.label + ";\n";
 				E1.label = tempCastVarLabel;
-
 				mapa_temp[tempCastVarLabel].label = E1.label;
 				mapa_temp[tempCastVarLabel].tipo = E2.tipo;
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				mapa_temp[$$->label].label = $$->label;
 				mapa_temp[$$->label].tipo = "int";
-				return builder + "\tint " + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
+				return builder + "\t" + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
 			}else if(E1.tipo == "float" && E2.tipo != "bool")
 			{
-
 				string tempCastVarLabel = gerarNome();
 				string builder = "\t" + tempCastVarLabel + " = " + "(" + E1.tipo + ")" + E2.label + ";\n";
 				E2.label = tempCastVarLabel;
-
 				mapa_temp[tempCastVarLabel].label = E2.label;
 				mapa_temp[tempCastVarLabel].tipo = E1.tipo;
-
 				string tempLabelResultado = gerarNome();
 				$$->label = tempLabelResultado;
 				mapa_temp[$$->label].label = $$->label;
 				mapa_temp[$$->label].tipo = "int";
-				return builder + "\tint " + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
+				return builder + "\t" + tempLabelResultado + " = " + E1.label + " " + operador + " " + E2.label + ";\n";
 			}
 		}
 	}
 }
-
 string declaracoes()
 {
 	MAPA mapa = *pilhaDeMapas.front();
@@ -158,32 +141,22 @@ string declaracoes()
 	stringstream s;
 	for(i = mapa.begin(); i != mapa.end(); i++){
 		if(i->second.tipo == "bool"){
-
 			i->second.tipo = "int";
 		}
 			
 		s << i->second.tipo << " " << i->second.label << ";\n\t";
-
 	}
 	
-
 	for(i = mapa_temp.begin(); i != mapa_temp.end(); i++){
 		if(i->second.tipo == "bool"){
-
 			i->second.tipo = "int";
 		}
 			
 		s << i->second.tipo << " " << i->second.label << ";\n\t";
-
 	}
-
 	variaveis += "\t" + s.str() + "\n";
-
 	return variaveis;
 }
-
-
-
 %}
 %token TK_NUM
 %token TK_CHAR
@@ -191,16 +164,13 @@ string declaracoes()
 %token TK_FIM TK_ERROR
 %token TK_CAST
 %token TK_BOOL
-
 %start START
-
 %left "||" "&&"
 %left "==" "!="
 %left '<' '>' ">=" "<="
 %left '+' '-'
 %left '*' '/'
 %%
-
 START			: ESCOPO_GLOBAL MAIN
 				{ 
 					cout << "\n*Compilador DOIT* \n#include<string.h>\n#include<iostream>\n#include<stdio.h>\n" << endl;
@@ -209,20 +179,17 @@ START			: ESCOPO_GLOBAL MAIN
 					cout << $2.traducao << endl;
 				}
 				;
-
 MAIN			: TK_TIPO TK_MAIN  '(' ')' BLOCO 
 				{
 					$$.traducao = "int main(void)\n{\n" + variaveis + $5.traducao + "\treturn 0;\n}\n\n"; 
 				}
 				;
-
 ESCOPO_GLOBAL	:
 				{
 					MAPA* mapa = new MAPA();
 					pilhaDeMapas.push_front(mapa);
 				} 
 				;
-
 INICIO_ESCOPO	: '{'
 				{	
 					MAPA* mapa = new MAPA();
@@ -230,16 +197,13 @@ INICIO_ESCOPO	: '{'
 					$$.traducao = "";
 				}
 				;
-
 FIM_ESCOPO		: '}'
 				{	
 					declaracoes();				
 					pilhaDeMapas.pop_front();
 					$$.traducao = "";
-
 				}
 				;
-
 BLOCO			: INICIO_ESCOPO COMANDOS FIM_ESCOPO
 				{
 					$$.traducao = $2.traducao;
@@ -256,44 +220,61 @@ COMANDO 	 	: E ';'
 				| DECLARACAO ';'
 				| ATRIBUICAO ';' 
 				;
-
 DECLARACAO 		: TK_TIPO TK_ID
 				{
-
 					
 					$$.label = gerarNome();
 					$$.tipo = $1.label;
-
 					MAPA* mapa = pilhaDeMapas.front();
 					(*mapa)[$2.nome_var].label = $$.label;
 					(*mapa)[$2.nome_var].tipo = $$.tipo;
 					(*mapa)[$2.nome_var].nome_var = $2.nome_var;
-
-
-
 					$$.tipo = $1.label;
-
 				} 
 				;
 ATRIBUICAO      :TK_ID '=' E 
-				{	
+				{
+
+
+					MAPA mapa = *pilhaDeMapas.front();
+					$1 = mapa[$1.nome_var];
+			
+
+					if($1.tipo != $3.tipo)
+					{
+
+						
+
+						string temp_cast = gerarNome();
+
+						string temp_builder = "\t" + temp_cast + " = " + "(" + $1.tipo + ")" + $3.label + ";\n";
+
+						mapa_temp[temp_cast].label = temp_cast;
+						mapa_temp[temp_cast].tipo = $1.tipo;
+
+						$$.traducao = $1.traducao + $3.traducao + temp_builder +"\t" + $1.label + " = " + temp_cast + ";\n" ;
+
+
+					}
 
 					
-					MAPA mapa = *pilhaDeMapas.front();
-					
-					if(mapa.find($1.nome_var) == mapa.end())
-					{
-						yyerror("Variavel não declarada vagabundo! ");
+					else
+					{	
+
+										
+						if(mapa.find($1.nome_var) == mapa.end())
+						{
+							yyerror("Variavel não declarada vagabundo! ");
+						}				
+						
+						
+						$$.traducao = $3.traducao + "\t" + $1.label + " = " + $3.label + ";\n";
+
+
 					}
 					
-					$1 = mapa[$1.nome_var];
-					
-					
-					$$.traducao = $3.traducao + "\t" + $1.label + " = " + $3.label + ";\n"; 
-					
 
-
-
+					
 				}
 				;
 E 				: '(' E ')'
@@ -365,19 +346,16 @@ T 				: C F
 				{
 					$$ = $2;
 					$$.label = gerarNome();
-
 					MAPA* mapa = pilhaDeMapas.front();
 					mapa_temp[$$.label].label = $$.label;
 					mapa_temp[$$.label].tipo = $$.tipo;
-
 					if($1.label == "(float)"){
-						$$.traducao = "\t" + $$.label + " = " + $2.label + ";\n";
+						$$.traducao = "\tfloat " + $$.label + " = " + $2.label + ";\n";
 						$$.tipo = "float";
 					}else if($1.label == "(int)"){
 						$$.traducao = "\t" + $$.label + " = " + $2.label + ";\n";
 						$$.tipo = "int";
 					}else{
-
 						$$.traducao = "\t" + $$.label + " = " + $2.label + ";\n";
 					}
 				}

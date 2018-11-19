@@ -24,6 +24,8 @@ ID {LETRA}({LETRA}|{NUM})*
 "(float)"|"(int)"   {yylval.label = yytext; return TK_CAST;}
 
 "main"		{return TK_MAIN;}
+"if"  		{return TK_IF;}
+"else"		{return TK_ELSE;}
 
 "int"		{yylval.label = yytext; return TK_TIPO;}
 "float"     {yylval.label = yytext; return TK_TIPO;}

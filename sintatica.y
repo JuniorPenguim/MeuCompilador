@@ -17,12 +17,10 @@ struct atributos
 typedef struct atributos Atributos;
 typedef map<string, Atributos> MAPA;
 list<MAPA*> pilhaDeMapas;
-string variaveis;
+
 MAPA mapa_temp;
 int yylex(void);
 void yyerror(string);
-
-
 string gerarNome(){
 	static int numeroVariaveis = 0;
 	numeroVariaveis++;
@@ -30,18 +28,26 @@ string gerarNome(){
 	stringNumeroVariaveis << numeroVariaveis;
 	return "temp_" + stringNumeroVariaveis.str();
 }
-
-MAPA* buscaMapa(string label)
-{
-	list<MAPA*>::iterator i;
-	for(i = pilhaDeMapas.begin(); i != pilhaDeMapas.end(); i++)
+atributos buscaMapa(string label)
+{ 
+	MAPA* mapa;
+	atributos var;
+	list<MAPA*>::reverse_iterator i;
+	for(i = pilhaDeMapas.rbegin(); i != pilhaDeMapas.rend(); i++)
 	{
-		MAPA* mapa = *i;
-		if(mapa->find(label) != mapa->end()) {return mapa;}
+		mapa = *i;
+		if(mapa->find(label) != mapa->end())
+		{
+			cout << (*mapa)[label].label << endl;
+			return (*mapa)[label];
+		}
+		
 	}
-	return NULL;
-}
 
+	
+	yyerror("Variável não declarada!");
+	return var;
+}
 string conversaoImplicita(atributos E1, atributos E2, string operador, atributos *$$)
 {
 	
@@ -136,16 +142,10 @@ string conversaoImplicita(atributos E1, atributos E2, string operador, atributos
 }
 string declaracoes()
 {
-	MAPA mapa = *pilhaDeMapas.front();
+	string variaveis;
 	MAPA::iterator i;
 	stringstream s;
-	for(i = mapa.begin(); i != mapa.end(); i++){
-		if(i->second.tipo == "bool"){
-			i->second.tipo = "int";
-		}
-			
-		s << i->second.tipo << " " << i->second.label << ";\n\t";
-	}
+	
 	
 	for(i = mapa_temp.begin(); i != mapa_temp.end(); i++){
 		if(i->second.tipo == "bool"){
@@ -157,6 +157,16 @@ string declaracoes()
 	variaveis += "\t" + s.str() + "\n";
 	return variaveis;
 }
+
+string gerarRotulo(){
+	static int numeroRotulos = 0;
+	numeroRotulos++;
+	ostringstream stringNumeroVariaveis;
+	stringNumeroVariaveis << numeroRotulos;
+	return "rotulo_" + stringNumeroVariaveis.str();
+}
+
+
 %}
 %token TK_NUM
 %token TK_CHAR
@@ -164,6 +174,7 @@ string declaracoes()
 %token TK_FIM TK_ERROR
 %token TK_CAST
 %token TK_BOOL
+%token TK_IF TK_ELSE
 %start START
 %left "||" "&&"
 %left "==" "!="
@@ -175,32 +186,32 @@ START			: ESCOPO_GLOBAL MAIN
 				{ 
 					cout << "\n*Compilador DOIT* \n#include<string.h>\n#include<iostream>\n#include<stdio.h>\n" << endl;
 					//cout << variaveis << endl;
-					declaracoes();			
+								
 					cout << $2.traducao << endl;
 				}
 				;
 MAIN			: TK_TIPO TK_MAIN  '(' ')' BLOCO 
 				{
-					$$.traducao = "int main(void)\n{\n" + variaveis + $5.traducao + "\treturn 0;\n}\n\n"; 
+					$$.traducao = "int main(void)\n{\n" + declaracoes() + $5.traducao + "\treturn 0;\n}\n\n"; 
 				}
 				;
 ESCOPO_GLOBAL	:
 				{
 					MAPA* mapa = new MAPA();
-					pilhaDeMapas.push_front(mapa);
+					pilhaDeMapas.push_back(mapa);
 				} 
 				;
 INICIO_ESCOPO	: '{'
 				{	
 					MAPA* mapa = new MAPA();
-					pilhaDeMapas.push_front(mapa);
+					pilhaDeMapas.push_back(mapa);
 					$$.traducao = "";
 				}
 				;
 FIM_ESCOPO		: '}'
 				{	
-					declaracoes();				
-					pilhaDeMapas.pop_front();
+					//declaracoes();				
+					pilhaDeMapas.pop_back();
 					$$.traducao = "";
 				}
 				;
@@ -218,62 +229,63 @@ COMANDOS		: COMANDO COMANDOS
 				;
 COMANDO 	 	: E ';'
 				| DECLARACAO ';'
-				| ATRIBUICAO ';' 
+				| ATRIBUICAO ';'
+				| IF  
 				;
+
+IF				: TK_IF '(' E ')' BLOCO 
+				{
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+					$$.traducao = $3.traducao + "\tif(" + $3.label + ")\n\t\tgoto " + rotulo_inicio + ";\n\telse\n\t\tgoto " + rotulo_fim + ";\n\t" + rotulo_inicio + ":\n" + $5.traducao + "\t" + rotulo_fim + ":\n";
+				}
+				|
+				  TK_IF '(' E ')' BLOCO TK_ELSE BLOCO 
+				{
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+					$$.traducao = $3.traducao + "\tif(" + $3.label + ")\n\t\tgoto " + rotulo_inicio + ";\n\telse\n\t\tgoto " + rotulo_fim + ";\n\t" + rotulo_inicio + ":\n" + $5.traducao + "\t" + rotulo_fim +":\n" + $7.traducao + "\n";	
+				}
+				;
+
 DECLARACAO 		: TK_TIPO TK_ID
 				{
 					
 					$$.label = gerarNome();
 					$$.tipo = $1.label;
-					MAPA* mapa = pilhaDeMapas.front();
+					mapa_temp[$$.label] = $$;
+					MAPA* mapa = pilhaDeMapas.back();
 					(*mapa)[$2.nome_var].label = $$.label;
 					(*mapa)[$2.nome_var].tipo = $$.tipo;
 					(*mapa)[$2.nome_var].nome_var = $2.nome_var;
-					$$.tipo = $1.label;
+					
 				} 
 				;
 ATRIBUICAO      :TK_ID '=' E 
 				{
 
+					atributos var = buscaMapa($1.nome_var);
 
-					MAPA mapa = *pilhaDeMapas.front();
-					$1 = mapa[$1.nome_var];
-			
+					$1 = var;
 
+					cout << $1.tipo << "tttttttt" << endl;
+								
 					if($1.tipo != $3.tipo)
 					{
-
 						
-
 						string temp_cast = gerarNome();
-
 						string temp_builder = "\t" + temp_cast + " = " + "(" + $1.tipo + ")" + $3.label + ";\n";
-
 						mapa_temp[temp_cast].label = temp_cast;
 						mapa_temp[temp_cast].tipo = $1.tipo;
-
 						$$.traducao = $1.traducao + $3.traducao + temp_builder +"\t" + $1.label + " = " + temp_cast + ";\n" ;
-
-
 					}
-
 					
 					else
 					{	
-
-										
-						if(mapa.find($1.nome_var) == mapa.end())
-						{
-							yyerror("Variavel não declarada vagabundo! ");
-						}				
-						
-						
-						$$.traducao = $3.traducao + "\t" + $1.label + " = " + $3.label + ";\n";
-
-
+									
+					 	$$.traducao = $3.traducao + "\t" + $1.label + " = " + $3.label + ";\n";
 					}
 					
-
 					
 				}
 				;
@@ -344,9 +356,9 @@ E 				: '(' E ')'
 				;
 T 				: C F
 				{
+					
 					$$ = $2;
 					$$.label = gerarNome();
-					MAPA* mapa = pilhaDeMapas.front();
 					mapa_temp[$$.label].label = $$.label;
 					mapa_temp[$$.label].tipo = $$.tipo;
 					if($1.label == "(float)"){
@@ -379,7 +391,10 @@ F 		  		: TK_NUM
 				}
 				| TK_ID
 				{
-					$$ = $1;
+
+					$$ = buscaMapa($1.nome_var);
+					if($$.label == "NULL")
+					yyerror("Variável não declarada! ");					
 				}
 				| TK_CHAR
 				{

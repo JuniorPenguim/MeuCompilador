@@ -31,6 +31,10 @@ ID {LETRA}({LETRA}|{NUM})*
 "float"     {yylval.label = yytext; return TK_TIPO;}
 "bool"      {yylval.label = yytext; return TK_TIPO;}
 
+"while"		{yylval.label = yytext; return TK_WHILE;}
+"for"		{yylval.label = yytext; return TK_FOR;}
+"do"		{yylval.label = yytext; return TK_DO;}
+
 "true"      {yylval.label = "1"; yylval.tipo = "bool"; return TK_BOOL;}
 "false"		{yylval.label = "0"; yylval.tipo = "bool"; return TK_BOOL;}
 

@@ -14,6 +14,9 @@ struct atributos
 	string tipo;
 	string nome_var;
 };
+
+
+
 typedef struct atributos Atributos;
 typedef map<string, Atributos> MAPA;
 list<MAPA*> pilhaDeMapas;
@@ -175,6 +178,7 @@ string gerarRotulo(){
 %token TK_CAST
 %token TK_BOOL
 %token TK_IF TK_ELSE
+%token TK_WHILE TK_FOR TK_DO
 %start START
 %left "||" "&&"
 %left "==" "!="
@@ -201,21 +205,21 @@ ESCOPO_GLOBAL	:
 					pilhaDeMapas.push_back(mapa);
 				} 
 				;
-INICIO_ESCOPO	: '{'
+INICIO_ESCOPO	: 
 				{	
 					MAPA* mapa = new MAPA();
 					pilhaDeMapas.push_back(mapa);
 					$$.traducao = "";
 				}
 				;
-FIM_ESCOPO		: '}'
+FIM_ESCOPO		: 
 				{	
 					//declaracoes();				
 					pilhaDeMapas.pop_back();
 					$$.traducao = "";
 				}
 				;
-BLOCO			: INICIO_ESCOPO COMANDOS FIM_ESCOPO
+BLOCO			: '{' COMANDOS '}'
 				{
 					$$.traducao = $2.traducao;
 				}
@@ -231,22 +235,79 @@ COMANDO 	 	: E ';'
 				| DECLARACAO ';'
 				| ATRIBUICAO ';'
 				| IF  
+				| LOOPS
 				;
 
-IF				: TK_IF '(' E ')' BLOCO 
+IF				: TK_IF '(' COMPARACAO ')' INICIO_ESCOPO BLOCO FIM_ESCOPO
 				{
 					string rotulo_inicio = gerarRotulo();
 					string rotulo_fim = gerarRotulo();
-					$$.traducao = $3.traducao + "\tif(" + $3.label + ")\n\t\tgoto " + rotulo_inicio + ";\n\telse\n\t\tgoto " + rotulo_fim + ";\n\t" + rotulo_inicio + ":\n" + $5.traducao + "\t" + rotulo_fim + ":\n";
+					$$.traducao = $3.traducao + "\tif(!" + $3.label + ")\n\t\tgoto " + rotulo_fim +  ";\n" + $6.traducao + "\t" + rotulo_fim + ":\n";
 				}
 				|
-				  TK_IF '(' E ')' BLOCO TK_ELSE BLOCO 
+				  TK_IF '(' COMPARACAO ')' INICIO_ESCOPO BLOCO FIM_ESCOPO TK_ELSE INICIO_ESCOPO BLOCO FIM_ESCOPO 
 				{
 					string rotulo_inicio = gerarRotulo();
 					string rotulo_fim = gerarRotulo();
-					$$.traducao = $3.traducao + "\tif(" + $3.label + ")\n\t\tgoto " + rotulo_inicio + ";\n\telse\n\t\tgoto " + rotulo_fim + ";\n\t" + rotulo_inicio + ":\n" + $5.traducao + "\t" + rotulo_fim +":\n" + $7.traducao + "\n";	
+					$$.traducao = $3.traducao + "\tif(!" + $3.label + ")\n\t\tgoto " + rotulo_fim + ";\n\telse\n\t\tgoto " + rotulo_fim + ";\n" + $6.traducao + "\t" + rotulo_fim +":\n" + $10.traducao + "\n";	
 				}
 				;
+
+LOOPS:			TK_WHILE '(' COMPARACAO ')' INICIO_ESCOPO BLOCO FIM_ESCOPO//mudar expressao para comparar
+				{
+
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+	
+					$$.traducao = "\t" + rotulo_inicio + ":\n"+ $3.traducao +"\tif(!" +$3.label + ") goto " +rotulo_fim+";\n"
+					+ $6.traducao + "\tgoto " + rotulo_inicio + ";\n\t"+ rotulo_fim +":\n";
+
+				}
+				|TK_DO INICIO_ESCOPO BLOCO TK_WHILE '(' COMPARACAO ')' FIM_ESCOPO ';'
+				{
+
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+					$$.traducao = "";
+	
+					$$.traducao = $6.traducao + "\t" + rotulo_inicio + ":\n"+ $3.traducao +"\tif(" +$6.label + ") goto " +rotulo_inicio+";\n"
+					+ "\t"+ rotulo_fim +":\n";
+
+
+				}  	
+
+				|TK_FOR '(' ATRIBUICAO ';' COMPARACAO ';' ATRIBUICAO ')' INICIO_ESCOPO BLOCO FIM_ESCOPO
+				{
+
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+
+					$$.traducao = $3.traducao + "\t" + rotulo_inicio + ":\n"+ $5.traducao +"\tif(!" +$5.label + ") goto " +rotulo_fim+";\n"
+				 	+ $10.traducao + $7.traducao + "\tgoto " + rotulo_inicio + ";\n\t"+ rotulo_fim +":\n";
+
+				}
+				|TK_FOR '('  ';' COMPARACAO ';' ATRIBUICAO ')' INICIO_ESCOPO BLOCO FIM_ESCOPO
+				{
+
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+
+					$$.traducao = "\t" + rotulo_inicio + ":\n"+ $4.traducao +"\tif(!" +$4.label + ") goto " +rotulo_fim+";\n"
+				 	+ $9.traducao + $6.traducao + "\tgoto " + rotulo_inicio + ";\n\t"+ rotulo_fim +":\n";
+				}
+
+				|TK_FOR '('  ';' COMPARACAO ';' ')' INICIO_ESCOPO BLOCO FIM_ESCOPO
+				{
+
+					string rotulo_inicio = gerarRotulo();
+					string rotulo_fim = gerarRotulo();
+
+					$$.traducao = "\t" + rotulo_inicio + ":\n"+ $4.traducao +"\tif(!" +$4.label + ") goto " +rotulo_fim+";\n"
+				 	+ $8.traducao  + "\tgoto " + rotulo_inicio + ";\n\t"+ rotulo_fim +":\n";
+				}
+
+				;
+
 
 DECLARACAO 		: TK_TIPO TK_ID
 				{
@@ -309,7 +370,13 @@ E 				: '(' E ')'
 				{
 					$$.traducao = $1.traducao + $3.traducao + conversaoImplicita($1, $3, "/", &$$);
 				}
-				| E '>' E
+				| T
+				{
+					$$ = $1;
+				}
+				;
+
+COMPARACAO		: E '>' E
 				{
 					$$.traducao = $1.traducao + $3.traducao + conversaoImplicita($1, $3, ">", &$$);
 				}
@@ -347,12 +414,7 @@ E 				: '(' E ')'
 					string tempNome2 = gerarNome();
 					$$.traducao = $1.traducao + $4.traducao + "\t" + tempNome + " = " + $1.label + " * " + $4.label + ";\n" + "\t" + tempNome2 + " = " + tempNome + " / 100;\n";
 					$$.label = tempNome2;
-				}
-				| T
-				{
-					$$ = $1;
-				}
-				|
+				}				
 				;
 T 				: C F
 				{
